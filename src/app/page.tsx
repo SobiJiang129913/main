@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import ReadingWorkspace from "@/components/reading-workspace";
 
 const example = `The Art of Paying Attention\n\nIn a world that moves quickly, reading invites us to slow down. A sentence can become a small doorway: into another life, an unfamiliar idea, or a feeling we have never quite found the words for.\n\nTo read deeply is to pay attention. It means staying with a difficult passage, noticing the rhythm of a phrase, and asking why the writer chose one word instead of another. Understanding grows in these quiet moments.\n\nWe do not need to understand everything at once. Sometimes, the most valuable thing a story gives us is a better question.`;
 const features = [
@@ -13,7 +14,6 @@ export default function Home() {
   const [article, setArticle] = useState("");
   const [reading, setReading] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const preview = useRef<HTMLElement>(null);
   const words = article.trim() ? article.trim().split(/\s+/).length : 0;
 
   function startReading(event: React.FormEvent<HTMLFormElement>) {
@@ -21,8 +21,12 @@ export default function Home() {
     if (!article.trim()) { setError("Add an article or try the example to begin."); return; }
     setError("");
     setReading(article.trim());
-    requestAnimationFrame(() => preview.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
+
+  if (reading) return <ReadingWorkspace article={reading} onBack={() => {
+    setReading(null);
+    requestAnimationFrame(() => document.getElementById("article-text")?.focus());
+  }} />;
 
   return (
     <div className="min-h-screen">
@@ -60,9 +64,7 @@ export default function Home() {
           <p className="privacy-note">A quiet space for your words. Your text stays in this browser tab.</p>
         </section>
 
-        {reading && <section ref={preview} id="reading-preview" className="reading-preview mx-auto max-w-3xl px-6" aria-labelledby="preview-title" tabIndex={-1}>
-          <div className="reading-paper"><p className="eyebrow">YOUR READING SPACE</p><h2 id="preview-title">A moment to read.</h2><p className="preview-notice" role="status">Local preview · AI vocabulary and sentence insights are coming in a future phase.</p><div className="reading-text">{reading.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><button className="text-button" onClick={() => { setReading(null); document.getElementById("article-text")?.focus(); }}>← Back to your article</button></div>
-        </section>}
+
 
         <section id="why-lumi" className="features-section mx-auto max-w-6xl px-6 md:px-12" aria-labelledby="features-title">
           <div className="features-heading flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="eyebrow">MORE THAN GETTING THE GIST</p><h2 id="features-title">A closer look changes everything.</h2></div><p>Small discoveries.<br />Lasting understanding.</p></div>
