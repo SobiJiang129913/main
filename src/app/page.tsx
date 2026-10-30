@@ -61,7 +61,7 @@ export default function Home() {
             </div>
           </form>
           <p className="example-note">Just looking around? <button onClick={() => { setArticle(example); setError(""); document.getElementById("article-text")?.focus(); }}>Try a little example <span aria-hidden="true">↗︎</span></button></p>
-          <p className="privacy-note">A quiet space for your words. Your text stays in this browser tab.</p>
+          <p className="privacy-note">Your article stays in this tab. In the reading room, AI sends only the selection and its sentence when you ask.</p>
         </section>
 
 
@@ -69,7 +69,7 @@ export default function Home() {
         <section id="why-lumi" className="features-section mx-auto max-w-6xl px-6 md:px-12" aria-labelledby="features-title">
           <div className="features-heading flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="eyebrow">MORE THAN GETTING THE GIST</p><h2 id="features-title">A closer look changes everything.</h2></div><p>Small discoveries.<br />Lasting understanding.</p></div>
           <div className="grid gap-5 md:grid-cols-3">{features.map(feature => <article key={feature.number} className="feature-card"><div className="flex items-start justify-between"><span className="feature-icon" aria-hidden="true">{feature.icon}</span><span className="feature-number">{feature.number}</span></div><h3>{feature.title}</h3><p>{feature.text}</p><span className="feature-tag">{feature.tag}</span></article>)}</div>
-          <p className="roadmap-note">A glimpse of what’s ahead. AI-powered features are planned for a future phase.</p>
+          <p className="roadmap-note">Explore words and sentences in the reading room. Request AI insights when you need a closer look.</p>
         </section>
         <section className="closing-note px-6 text-center"><span aria-hidden="true">✳︎</span><p>Good reading isn’t a race.<br /><em>It’s a way of seeing.</em></p></section>
       </main>
