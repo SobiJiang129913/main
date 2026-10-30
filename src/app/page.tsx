@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import ReadingWorkspace from "@/components/reading-workspace";
+import DailyReading from "@/components/daily-reading";
+import LocalLibrary, { ExportButton } from "@/components/local-library";
+import { useLibrary, changeLibrary } from "@/hooks/use-library";
+import { beginReading } from "@/lib/library";
 
 const example = `The Art of Paying Attention\n\nIn a world that moves quickly, reading invites us to slow down. A sentence can become a small doorway: into another life, an unfamiliar idea, or a feeling we have never quite found the words for.\n\nTo read deeply is to pay attention. It means staying with a difficult passage, noticing the rhythm of a phrase, and asking why the writer chose one word instead of another. Understanding grows in these quiet moments.\n\nWe do not need to understand everything at once. Sometimes, the most valuable thing a story gives us is a better question.`;
 const features = [
@@ -11,8 +15,11 @@ const features = [
 ];
 
 export default function Home() {
-  const [article, setArticle] = useState("");
-  const [reading, setReading] = useState<string | null>(null);
+  const { library, ready, warning } = useLibrary();
+  const article = library.draft;
+  const setArticle = (text: string) => changeLibrary(l => ({ ...l, draft: text }));
+  const active = library.articles.find(a => a.id === library.activeId);
+  const notice = warning ? <div className="storage-warning" role="alert"><p>{warning}</p><ExportButton library={library} /></div> : null;
   const [error, setError] = useState("");
   const words = article.trim() ? article.trim().split(/\s+/).length : 0;
 
@@ -20,21 +27,25 @@ export default function Home() {
     event.preventDefault();
     if (!article.trim()) { setError("Add an article or try the example to begin."); return; }
     setError("");
-    setReading(article.trim());
+    changeLibrary(l => beginReading(l, article, crypto.randomUUID(), new Date().toISOString()));
   }
 
-  if (reading) return <ReadingWorkspace article={reading} onBack={() => {
-    setReading(null);
+  if (!ready) return <main className="library-loading" role="status">正在打开你的阅读空间…</main>;
+  if (library.view === "library") return <>{notice}<LocalLibrary library={library} /></>;
+  if (library.view === "reader" && active) return <>{notice}<ReadingWorkspace key={active.id} record={active} onBack={() => {
+    changeLibrary(l => ({ ...l, view: "home", draft: active.text }));
     requestAnimationFrame(() => document.getElementById("article-text")?.focus());
-  }} />;
+  }} /></>;
 
   return (
     <div className="min-h-screen">
+      {notice}
       <a href="#article" className="skip-link">Skip to article input</a>
       <header className="site-header mx-auto flex max-w-6xl items-center justify-between px-6 md:px-12">
         <a href="#" className="logo" aria-label="LUMI home"><span className="logo-mark" aria-hidden="true">✳︎</span> lumi<span className="logo-dot">.</span></a>
         <nav aria-label="Main navigation" className="flex items-center gap-5 md:gap-9">
-          <a className="nav-link" href="#why-lumi">Why Lumi</a>
+          <a className="nav-link hidden sm:inline" href="#why-lumi">Why Lumi</a>
+          <button className="nav-link" onClick={() => changeLibrary(l => ({ ...l, view: "library" }))}>阅读书架</button>
           <a className="nav-cta" href="#article">Let’s read <span aria-hidden="true">↗︎</span></a>
         </nav>
       </header>
@@ -61,10 +72,13 @@ export default function Home() {
             </div>
           </form>
           <p className="example-note">Just looking around? <button onClick={() => { setArticle(example); setError(""); document.getElementById("article-text")?.focus(); }}>Try a little example <span aria-hidden="true">↗︎</span></button></p>
-          <p className="privacy-note">A quiet space for your words. Your text stays in this browser tab.</p>
+          <p className="privacy-note">文章、阅读进度与收藏自动保存在此浏览器。无上传，无 API 费用。</p>
+          {active && <div className="resume-card"><div><p className="eyebrow">PICK UP WHERE YOU LEFT OFF</p><p>{active.title}</p></div><button className="nav-cta" onClick={() => changeLibrary(l => beginReading(l, active.text, active.id, new Date().toISOString()))}>继续上次阅读 →</button></div>}
         </section>
 
 
+
+        <DailyReading />
 
         <section id="why-lumi" className="features-section mx-auto max-w-6xl px-6 md:px-12" aria-labelledby="features-title">
           <div className="features-heading flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="eyebrow">MORE THAN GETTING THE GIST</p><h2 id="features-title">A closer look changes everything.</h2></div><p>Small discoveries.<br />Lasting understanding.</p></div>

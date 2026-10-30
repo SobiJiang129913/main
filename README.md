@@ -1,86 +1,92 @@
-# main
-main主支线
-
 # LUMI · Read beyond the words.
 
-LUMI 是一个英语深度阅读伙伴。当前提供响应式首页、文章输入、示例文章和交互式阅读工作台。AI 解释、数据库和身份验证尚未接入。
+LUMI 是一个英语精读工具，使用 Next.js、TypeScript 和 Tailwind CSS。当前版本支持本地阅读书架与每日新闻选读，**不接入 AI、登录或数据库，不需要 API Key**。此前的 OpenAI 实验保留在独立的 `feat/openai-reading` 分支，本分支从第二阶段主分支继续开发。
 
-## 本地运行
+## 运行与检查
 
-需要 Node.js 20.9 或更高版本（当前环境使用 Node.js 24）以及 npm。
+需要 Node.js 20.9 或更高版本（开发环境使用 Node.js 24）。
 
 ```bash
 npm ci
 npm run dev
 ```
 
-在自己的电脑上打开 http://localhost:3000。停止服务：在终端按 Ctrl+C。
+在自己的电脑上访问 http://localhost:3000，停止服务按 Ctrl+C。云环境的回环地址不会自动成为公开网站预览。Vercel 导入仓库后，Framework Preset 选择 Next.js，构建与输出目录使用默认设置。
 
 ```bash
+npm test
 npm run lint
 npm run typecheck
 npm run build
 npm start
 ```
 
-`npm start` 运行上一步生成的生产构建；开发时使用 `npm run dev`。
-如云环境无法写入默认 npm 缓存，可以使用 `npm_config_cache=/tmp/lumi-npm-cache npm ci`。
+`npm start` 用于运行已生成的生产构建；开发时使用 `npm run dev`。如当前机器无法写入默认 npm 缓存，可使用 `npm_config_cache=/tmp/lumi-npm-cache npm ci`。
+
+## 使用流程
+
+1. 首页粘贴文章（最多 30,000 字符）或加载示例，点击 **Start Reading**。
+2. 在阅读工作台切换 **Words / Sentences**，点击词句查看示例学习笔记；没有笔记时会明确提示，不会伪装成 AI 解释。
+3. 点击 **Save this discovery** 收藏词句，在下方“我的备注”直接输入，自动保存。每项备注最多 2,000 字符，每篇最多 200 条收藏。
+4. 浏览原文时自动记录所在段落；字号、选择模式也会保存。可以在文末手动标记已读完。刷新或重新打开同一网址，会恢复上次的页面、文章与所在段落。定位精度为段落，不是逐字位置。
+5. 选择 **Edit article** 返回首页，保留正文。相同正文再次打开会恢复旧记录；修改正文后开始阅读会创建新文章，不覆盖原文章及收藏。
+6. **阅读书架** 中可以搜索标题、正文、收藏和备注，筛选有收藏的文章，继续阅读，以及删除文章。删除需确认，并同时删除该文章的收藏、备注与进度，无法撤销。最多保留 40 篇，不会静默删除旧记录。
+7. 点击 **导出备份**，下载包含文章全文、进度、收藏、备注及草稿的 JSON 文件。当前支持导出供备份、查看与后续迁移，**尚无导入恢复界面**。
+
+## 本地数据边界
+
+数据存于浏览器 `localStorage` 的 `lumi.library.v1`，没有发送到服务器。首页尚未开始阅读的草稿也会保存。
+
+- 数据属于当前浏览器、当前网站源（协议 + 域名 + 端口）。Vercel 的预览域名与正式域名不是同一份书架；换网址、浏览器或设备，不会自动同步。建议长期在同一个正式域名使用。
+- 清除网站数据、浏览器自动清理或隐私模式结束可能丢失记录，请定期导出。备份包含文章和私人备注，请妥善保管。
+- 存储满、被禁用或数据校验失败时会显示提示，并允许临时阅读与导出；不可将临时内容误认为已持久保存。检测到损坏或未知版本时不会覆盖原始数据。
+- 同一浏览器的其他标签页通过 storage 事件更新；同时编辑时以最后一次写入为准，不提供冲突合并。无需登录，也没有跨设备云同步。
+
+## 每日选读：BBC + The Guardian
+
+首页“每日选读”从出版方的公开 RSS 获取标题、摘要、发布时间和原文链接：
+
+- BBC World：`https://feeds.bbci.co.uk/news/world/rss.xml`
+- The Guardian World：`https://www.theguardian.com/world/rss`
+
+进入该区域后请求本站 `GET /api/reading-feed`，由服务端并行读取固定白名单来源，不接受用户提供的任意 URL。仅接收对应出版方 HTTPS 原文链接；不抓取付费全文，不自动提取正文。
+
+可以按来源筛选、手动刷新、跳转原站阅读全文，再回到首页粘贴你有权使用的正文进行精读。RSS 标题与摘要的展示不等于获得全文转载权。
+
+“每日”是发现最新可用文章，不代表所有文章都发表于当天，也不是后台定时任务。每个来源成功后通常缓存 30 分钟；页面列表可有 5 分钟 CDN 缓存，刷新不强制绕过缓存。来源失败时展示明确状态；如果当前服务实例有上次成功数据，则标记“旧缓存”，否则显示暂不可用和原站链接。不会用编造新闻替代实时数据。
+
+生产环境需允许 HTTPS 访问 `feeds.bbci.co.uk` 与 `www.theguardian.com`。Codex 云环境与 Vercel 的网络策略独立；若代理返回 403，需要在云环境设置放行后再验证。保存网络草稿本身不会应用到当前机器。Vercel 能否实时获取仍以部署后的接口结果为准。
 
 ## 项目结构
 
-- `src/app/page.tsx`：首页、文章输入、示例文章和本地阅读预览。
-- `src/app/layout.tsx`：全局页面布局、语言和网页标题与描述。
-- `src/app/globals.css`：Tailwind CSS 入口、配色、排版及响应式样式。
-- `public/`：静态资源目录。
-- `package.json` / `package-lock.json`：开发命令、依赖及锁定版本。
-- `eslint.config.mjs` / `tsconfig.json`：代码质量与 TypeScript 配置。
-- `next.config.ts`：Next.js 配置。
+- `src/app/page.tsx`：首页、文章输入、继续阅读和书架入口。
+- `src/components/reading-workspace.tsx`：词句交互、段落定位、收藏和备注。
+- `src/components/local-library.tsx`：历史记录、搜索、删除确认和 JSON 下载。
+- `src/hooks/use-library.ts`：浏览器存储、服务端渲染兼容、异常提示和标签页更新。
+- `src/lib/library.ts`：本地数据模型、验证、文章去重、收藏与导出。
+- `src/components/daily-reading.tsx`：每日选读列表、来源筛选、来源状态与加载反馈。
+- `src/lib/feeds.ts`：安全 RSS 解析、固定来源、缓存与降级。
+- `src/app/api/reading-feed/route.ts`：RSS 服务端接口。
+- `src/lib/reading.ts`：原文分段和人工编写的示例笔记。
+- `src/app/layout.tsx` / `src/app/globals.css`：全局布局、元信息和响应式样式。
+- `tests/`：本地数据模型与 RSS 服务自动测试。RSS 测试使用明确的模拟响应，不代表真实源站访问已验证。
 
-## 第一阶段的行为
+## GitHub 审阅与发布
 
-“Try a little example” 会填入示例文章。粘贴文字后点击 “Start Reading”，进入第二阶段阅读工作台；空输入会提示补充文章。三张卡片介绍产品方向，并不代表 AI 已接入。
+本轮改动位于 `feat/local-reading-library`。在 GitHub 创建 Pull Request，目标选 `main`，来源选该分支。在 **Files changed** 查看改动，Vercel 如已启用分支部署，可先打开 Preview 测试。预览与正式域名的浏览器数据相互独立。
 
-文章只保存在当前组件内存中，不发送到服务端，也不写入本地存储。刷新页面后会清空。无需 API Key 或 `.env` 文件。
+确认后点击 **Merge pull request → Confirm merge**。Vercel 自动构建 `main`，新的 Production 部署显示 Ready 后，固定正式网址才会更新。不要把关闭或归档 PR 当作合并。
 
-## 新手 Git / GitHub 流程
-
-在仓库目录执行以下操作（先检查是否已在专用功能分支上，避免重复创建）：
+本地 Git 常用流程：
 
 ```bash
 git status
-git switch -c feat/lumi-landing
-git diff
+git switch -c feat/your-next-feature
+# 完成修改并检查后
 git add .
 git diff --cached
-git commit -m "Build LUMI phase-one landing page"
-git push -u origin feat/lumi-landing
+git commit -m "Describe your change"
+git push -u origin feat/your-next-feature
 ```
 
-`git diff` 查看已跟踪文件的改动；新文件在 `git add .` 后可通过 `git diff --cached` 一起查看。
-提交前确认没有密钥或个人文件；`node_modules` 与 `.next` 已由 `.gitignore` 排除。
-
-推送后，在 GitHub 仓库页面选择 **Compare & pull request**，目标分支选择 `main`，来源选择 `feat/lumi-landing`。填写说明并点击 **Create pull request**。在 **Files changed** 中审阅文件，在 **Checks** 中查看仓库已配置的检查（本项目未配置 GitHub Actions，因此可能没有自动检查）。确认后点击 **Merge pull request** → **Confirm merge**。
-
-合并后，如本地没有未提交改动，可以执行：
-
-```bash
-git switch main
-git pull --ff-only origin main
-```
-
-如果 Codex 界面提供“创建 PR”操作，也可使用它完成提交与 PR 创建；以界面实际显示为准。代码在本地完成并不代表已经推送或合并到 GitHub。
-
-## 第二阶段：阅读工作台
-
-在首页粘贴文章或加载示例后，点击 **Start Reading**，进入阅读工作台：
-
-- **Words / Sentences**：切换单词和句子选择模式；鼠标点击或键盘 Tab + Enter 选择内容。
-- 右侧学习面板展示所选内容。示例词汇包括 attention、doorway、rhythm 等；部分示例句子有句意、结构与思考问题。笔记为人工预编写，并非 AI 实时解释；其他内容明确显示暂无示例解释。
-- **A− / A+**：将正文字号调整为 18–26px。
-- **Save this discovery**：把所选词句加入本次阅读收藏；可重新打开和移除。返回编辑或刷新后清空，不是永久保存。
-- **Edit article**：返回首页编辑，保留输入文本；再次开始阅读会开启新的阅读会话。
-- 手机端选择词句后滚动到解释区域，点击 **Back to selected text** 返回原文。减少动态效果偏好会受到尊重。
-
-新增文件：`src/components/reading-workspace.tsx` 为工作台界面与交互；`src/lib/reading.ts` 为段落/句子/单词分段及示例学习数据。
-
-仍未接入 OpenAI、数据库、身份验证或文章上传。网页路径仍为 `/`，阅读内容保存在组件内存中，不能通过分享网址恢复当前文章。
+提交前确认没有密钥或个人文件；`node_modules`、`.next`、`.env*` 已忽略。合并后，本地工作区干净时可切到 `main` 并执行 `git pull --ff-only origin main`。
