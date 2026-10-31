@@ -1,6 +1,6 @@
 # LUMI · Read beyond the words.
 
-LUMI 是一个英语精读工具，使用 Next.js、TypeScript 和 Tailwind CSS。当前版本支持本地阅读书架与每日新闻选读，**不接入 AI、登录或数据库，不需要 API Key**。此前的 OpenAI 实验保留在独立的 `feat/openai-reading` 分支，本分支从第二阶段主分支继续开发。
+LUMI 是一个英语精读工具，使用 Next.js、TypeScript 和 Tailwind CSS。当前版本支持本地阅读书架与每日新闻选读，**不接入 AI、登录或数据库；基础阅读与 RSS 不需要 Key，可选 Guardian 全文入口需单独配置官方接口 Key**。此前的 OpenAI 实验保留在独立的 `feat/openai-reading` 分支，本分支从第二阶段主分支继续开发。
 
 ## 运行与检查
 
@@ -92,3 +92,21 @@ git push -u origin feat/your-next-feature
 ```
 
 提交前确认没有密钥或个人文件；`node_modules`、`.next`、`.env*` 已忽略。合并后，本地工作区干净时可切到 `main` 并执行 `git pull --ff-only origin main`。
+
+
+## 可选：Guardian 一键全文精读（正文最多 3,000 英文词）
+
+The Guardian 新闻卡片增加“全文精读”按钮。点击后通过本站 `POST /api/full-article` 请求 Guardian Open Platform 的 `bodyText` 正文字段，显示在 LUMI 内，并保留出版方、作者与原文链接。正文超过 3,000 词时拒绝导入，不截断后冒充全文；仍受现有阅读器 30,000 字符总长度上限约束。字数限制按正文计算，阅读器总字数还包含标题与来源信息。
+
+BBC 当前仍只有摘要入口，不支持通用网页抓取。并非所有 Guardian 内容都有 API 正文（如直播、视频、权限受限的文章），没有正文时明确提示，摘要入口始终作为独立选择。
+
+启用步骤：
+
+1. 在 https://open-platform.theguardian.com/access/ 申请适合你用途的开发者 Key，确认当前配额，以及全文展示、本地保存和导出的使用条款。Key 并不自动授予任意商业转载权。
+2. 在 Vercel → Settings → Environment Variables 添加 **Secret** `LUMI_GUARDIAN_API_KEY`，先选择 Preview。此 Key 与 OpenAI Key 完全不同，不要填到聊天或 GitHub。
+3. 重新部署当前分支，在 Guardian 新闻卡片点击“全文精读”验证。成功后再为 Production 配置并合并部署。
+4. 未配置时基础 RSS、图片、摘要精读和书架仍可使用；全文按钮会显示缺少配置，不能把模拟测试当成真实官方 API 验证。
+
+接口只请求固定的 `content.guardianapis.com`，不接受任意站点。服务端不缓存全文响应，也不输出 Key 或上游错误详情。导入后的文章按当前书架逻辑保存在本地浏览器。API Key 仅由服务端使用；不要开启记录包含凭据的上游完整请求 URL 的日志。
+
+Codex 若需真实联调，还须在环境设置安全填写同名 Key，并允许目标 `content.guardianapis.com`。网络和密钥要求已保存为草稿不代表运行环境已应用，也不会同步到 Vercel。
