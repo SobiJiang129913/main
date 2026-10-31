@@ -217,3 +217,20 @@ textarea.discovery-note { min-height: 80px; max-height: 240px; border: 1px solid
 .news-reading-actions .summary-read-button { margin-top: 0; width: 100%; }
 .full-read-button { background: #344f37; }
 .full-article-error { padding: 12px; margin-top: 10px; background: #f9eddb; color: #8b583d; font-size: 11px; line-height: 1.9; overflow-wrap: anywhere; }
+
+/* Non-modal word lookup follows the viewport; sentence lookup remains in the sidebar. */
+.floating-word-lookup { position: fixed; z-index: 40; top: 24px; right: max(24px, calc((100vw - 1240px) / 2)); width: 340px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; background: #f1f3e7; border: 1px solid #bdcbae; border-radius: 12px; box-shadow: 0 14px 48px #273d3026; overflow: hidden; }
+.floating-word-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 15px; border-bottom: 1px solid #d7dfca; flex-shrink: 0; }
+.floating-word-header > div { min-width: 0; }
+.floating-word-header h2 { font-family: Georgia, serif; font-size: 30px; margin: 9px 0 0; line-height: 1.2; overflow-wrap: anywhere; }
+.floating-word-close { width: 36px; height: 36px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid #cbd5be; border-radius: 50%; font-size: 25px; line-height: 1; color: var(--sage); }
+.floating-word-close:hover { background: #e0e7d3; }
+.floating-word-body { padding: 18px 20px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.floating-word-body > .note-block:first-child { margin-top: 0; }
+.floating-word-context { margin-top: 20px; font-size: 12px; color: #586b4e; }
+.floating-word-context summary { cursor: pointer; padding: 8px 0; }
+.floating-word-context blockquote { font-family: Georgia, serif; border-left: 2px solid #a8b58f; padding-left: 12px; margin: 8px 0; line-height: 1.9; white-space: pre-wrap; }
+.floating-word-footer { padding: 14px 20px; border-top: 1px solid #d7dfca; flex-shrink: 0; }
+.floating-word-footer .save-button { margin-top: 0; }
+.floating-word-footer > p { font-size: 9px; color: #718065; text-align: center; margin-top: 10px; }
+@media(max-width:760px) { .floating-word-lookup { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); right: 12px; width: calc(100vw - 24px); max-width: none; max-height: min(48dvh, 440px); border-radius: 12px; } .floating-word-header { padding: 12px 16px; } .floating-word-header h2 { font-size: 25px; margin-top: 5px; } .floating-word-body { padding: 12px 16px; } .floating-word-footer { padding: 10px 16px; } .floating-word-footer > p { display: none; } }
