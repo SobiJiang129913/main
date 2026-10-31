@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AppearanceControls from "@/components/appearance-controls";
 
 export const metadata: Metadata = {
   title: "LUMI — Read beyond the words.",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="zh-CN"><body><AppearanceControls />{children}</body></html>;
 }

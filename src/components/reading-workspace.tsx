@@ -1,17 +1,22 @@
 "use client";
+import { useUI } from "@/hooks/use-preferences";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { generateStudy } from "@/hooks/use-study";
 import FloatingWordLookup from "@/components/floating-word-lookup";
 import { changeLibrary } from "@/hooks/use-library";
 import { updateRecord, toggleDiscovery, type ReadingRecord, type Selection } from "@/lib/library";
 import { sentenceNotes, splitArticle } from "@/lib/reading";
 
-export default function ReadingWorkspace({ record, onBack }: { record: ReadingRecord; onBack: () => void }) {
+export default function ReadingWorkspace({ record, initialSelection, onBack }: { record: ReadingRecord; initialSelection?: Selection; onBack: () => void }) {
+  const t = useUI();
   const article = record.text;
   const [mode, setMode] = useState<"word" | "sentence">(record.progress.mode);
-  const [selected, setSelected] = useState<Selection | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(initialSelection || null);
   const saved = record.discoveries;
   const [size, setSize] = useState(record.progress.size);
+  const initialFocus = useRef(initialSelection?.id);
+  const skipInitialSentenceScroll = useRef(Boolean(initialSelection));
   const initialParagraph = useRef(record.progress.paragraph);
   const pauseProgressUntil = useRef(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -22,7 +27,8 @@ export default function ReadingWorkspace({ record, onBack }: { record: ReadingRe
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     const frame = requestAnimationFrame(() => {
-      if (initialParagraph.current > 0) document.getElementById(`reading-p${initialParagraph.current}`)?.scrollIntoView({ block: "start", behavior: "instant" });
+      if (initialFocus.current) { document.getElementById(initialFocus.current)?.scrollIntoView({ block: "center", behavior: "instant" }); document.getElementById(initialFocus.current)?.focus({ preventScroll: true }); }
+      else if (initialParagraph.current > 0) document.getElementById(`reading-p${initialParagraph.current}`)?.scrollIntoView({ block: "start", behavior: "instant" });
       else window.scrollTo({ top: 0, behavior: "instant" });
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -47,6 +53,7 @@ export default function ReadingWorkspace({ record, onBack }: { record: ReadingRe
   }, [record.id]);
 
   useEffect(() => {
+    if (skipInitialSentenceScroll.current) { skipInitialSentenceScroll.current = false; return; }
     if (selected?.kind === "sentence" && window.matchMedia("(max-width: 760px)").matches) {
       pauseProgressUntil.current = Date.now() + 1500;
       const paragraph = Number(selected.id.match(/^p(\d+)/)?.[1] || 0);
@@ -71,23 +78,24 @@ export default function ReadingWorkspace({ record, onBack }: { record: ReadingRe
   }
   function toggleSave() {
     if (!selected) return;
-    changeLibrary(l => updateRecord(l, record.id, a => toggleDiscovery(a, selected)));
+    const changed = changeLibrary(l => updateRecord(l, record.id, a => toggleDiscovery(a, selected)));
+    if (changed && !isSaved) void generateStudy(record.id, { ...selected, note: "" });
   }
 
   return <div className="workspace">
-    <a href="#reading-content" className="skip-link">Skip to article</a>
+    <a href="#reading-content" className="skip-link">{t("Skip to article")}</a>
     <header className="workspace-header">
-      <button className="logo" onClick={onBack} aria-label="LUMI — back to article input">lumi.</button>
-      <span className="workspace-chapter">YOUR PERSONAL READING ROOM</span>
-      <div className="library-actions"><button className="nav-cta" onClick={() => changeLibrary(l => ({ ...l, view: "library" }))}>阅读书架</button><button className="nav-cta" onClick={onBack}>← Edit article</button></div>
+      <button className="logo" onClick={onBack} aria-label={t("返回文章输入")}>lumi.</button>
+      <span className="workspace-chapter">{t("YOUR PERSONAL READING ROOM")}</span>
+      <div className="library-actions"><button className="nav-cta" onClick={() => changeLibrary(l => ({ ...l, view: "favorites" }))}>{t("收藏夹")}</button><button className="nav-cta" onClick={() => changeLibrary(l => ({ ...l, view: "library" }))}>{t("阅读书架")}</button><button className="nav-cta" onClick={onBack}>{t("← Edit article")}</button></div>
     </header>
     <main className="workspace-main">
-      <div className="workspace-intro"><div><p className="eyebrow">SLOW DOWN. LOOK CLOSER.</p><h1 ref={heading} tabIndex={-1}>Between the lines.</h1><p>A space to notice, question, and understand.</p></div><span className="demo-badge">LOCAL LIBRARY · NO AI REQUIRED</span></div>
+      <div className="workspace-intro"><div><p className="eyebrow">{t("SLOW DOWN. LOOK CLOSER.")}</p><h1 ref={heading} tabIndex={-1}>{t("Between the lines.")}</h1><p>{t("A space to notice, question, and understand.")}</p></div><span className="demo-badge">{t("LOCAL LIBRARY · AI NOTES ON REQUEST")}</span></div>
       <div className="workspace-grid">
         <section className="reader-paper" aria-labelledby="article-heading">
-          <div className="reader-toolbar"><div><span className="eyebrow">YOUR ARTICLE</span><span className="reader-count">{count} words · ~{Math.max(1, Math.ceil(count / 180))} min read</span></div><div className="font-controls" role="group" aria-label="Reading text size"><button disabled={size === 18} onClick={() => changeSize(-2)} aria-label="Decrease text size">A−</button><button disabled={size === 26} onClick={() => changeSize(2)} aria-label="Increase text size">A+</button></div></div>
-          <h2 id="article-heading">A moment to read.</h2>
-          <div className="selection-toolbar"><div className="mode-controls" role="group" aria-label="Selection mode"><button aria-pressed={mode === "word"} onClick={() => changeMode("word")}>Words</button><button aria-pressed={mode === "sentence"} onClick={() => changeMode("sentence")}>Sentences</button></div><p>{mode === "word" ? "Click a word to explore it." : "Click a sentence to look closer."}</p></div>
+          <div className="reader-toolbar"><div><span className="eyebrow">{t("YOUR ARTICLE")}</span><span className="reader-count">{count} {t("单词")} · ~{Math.max(1, Math.ceil(count / 180))} {t("分钟阅读")}</span></div><div className="font-controls" role="group" aria-label={t("Reading text size")}><button disabled={size === 18} onClick={() => changeSize(-2)} aria-label={t("Decrease text size")}>A−</button><button disabled={size === 26} onClick={() => changeSize(2)} aria-label={t("Increase text size")}>A+</button></div></div>
+          <h2 id="article-heading">{t("A moment to read.")}</h2>
+          <div className="selection-toolbar"><div className="mode-controls" role="group" aria-label={t("Selection mode")}><button aria-pressed={mode === "word"} onClick={() => changeMode("word")}>{t("Words")}</button><button aria-pressed={mode === "sentence"} onClick={() => changeMode("sentence")}>{t("Sentences")}</button></div><p>{mode === "word" ? t("Click a word to explore it.") : t("Click a sentence to look closer.")}</p></div>
           <div id="reading-content" className="interactive-article" style={{ fontSize: size }} tabIndex={-1}>
             {paragraphs.map(p => <p id={`reading-${p.id}`} data-paragraph={p.id.slice(1)} key={p.id}>{p.sentences.map(s => mode === "sentence" ? <button id={s.id} key={s.id} className={`sentence-token ${selected?.id === s.id ? "token-selected" : ""}`} aria-pressed={selected?.id === s.id} onClick={() => setSelected({ id: s.id, kind: "sentence", text: s.text.trim(), context: s.text.trim() })}>{s.text}</button> : <span key={s.id}>{s.words.map(w => {
               const id = `${s.id}-w${w.offset}`;
@@ -97,28 +105,28 @@ export default function ReadingWorkspace({ record, onBack }: { record: ReadingRe
               }}>{w.text}</button> : <span key={id}>{w.text}</span>;
             })}</span>)}</p>)}
           </div>
-          <div className="reader-end"><button className="nav-cta complete-button" aria-pressed={record.progress.completed} onClick={() => changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, progress: { ...a.progress, completed: !a.progress.completed } })))}>{record.progress.completed ? "✓ 已标记读完" : "标记为已读完"}</button><span aria-hidden="true">✧</span><p>You don’t have to understand everything at once.</p></div>
+          <div className="reader-end"><button className="nav-cta complete-button" aria-pressed={record.progress.completed} onClick={() => changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, progress: { ...a.progress, completed: !a.progress.completed } })))}>{record.progress.completed ? t("✓ 已标记读完") : t("标记为已读完")}</button><span aria-hidden="true">✧</span><p>{t("You don’t have to understand everything at once.")}</p></div>
         </section>
-        <aside className="companion-column" aria-label="Reading companion">
+        <aside className="companion-column" aria-label={t("Reading companion")}>
           <section id="companion-panel" className="companion-panel">
-            <div className="panel-top"><span className="eyebrow">YOUR COMPANION</span><span aria-hidden="true">✧</span></div>
+            <div className="panel-top"><span className="eyebrow">{t("YOUR COMPANION")}</span><span aria-hidden="true">✧</span></div>
             <div className="companion-content" aria-live="polite" aria-atomic="true">
-              {(!selected || selected.kind === "word") ? <div className="companion-empty"><span aria-hidden="true">{mode === "word" ? "Aa" : "↳"}</span><h2>A little curiosity<br />goes a long way.</h2><p>{mode === "word" ? "点击文章中的单词，词汇浮窗会留在当前视窗内，不必回到顶部。句子分析仍在此侧栏查看。" : "Choose a sentence to explore its meaning and structure."}</p><div className="demo-tip">Try the example article’s <strong>attention</strong> or <strong>doorway</strong>, or select “To read deeply is to pay attention.” in Sentences mode.</div></div> : <>
-                <button className="return-to-selection" onClick={() => document.getElementById(selected.id)?.focus()}>↑ Back to selected text</button>
-                <p className="selection-type">SENTENCE EXPLORATION</p>
+              {(!selected || selected.kind === "word") ? <div className="companion-empty"><span aria-hidden="true">{mode === "word" ? "Aa" : "↳"}</span><h2>{t("A little curiosity")}<br />{t("goes a long way.")}</h2><p>{mode === "word" ? t("点击文章中的单词，词汇浮窗会留在当前视窗内，不必回到顶部。句子分析仍在此侧栏查看。") : t("Choose a sentence to explore its meaning and structure.")}</p><div className="demo-tip">{t("可试读示例里的 attention、doorway，或切到句子模式选择一个句子。")}</div></div> : <>
+                <button className="return-to-selection" onClick={() => document.getElementById(selected.id)?.focus()}>{t("↑ Back to selected text")}</button>
+                <p className="selection-type">{t("SENTENCE EXPLORATION")}</p>
                 <h2 className="selected-text">{selected.text}</h2>
-                <p className="note-label">{sentenceNote ? "HANDWRITTEN SAMPLE NOTE" : "NO SAMPLE NOTE AVAILABLE"}</p>
-                {sentenceNote ? <><div className="note-block"><h3>Meaning · 句意</h3><p>{sentenceNote.translation}</p></div><div className="note-block"><h3>Structure · 结构</h3><p>{sentenceNote.structure}</p></div><div className="reflection"><h3>Think about it</h3><p>{sentenceNote.question}</p></div></> : <div className="note-block"><h3>Stay curious</h3><p>这个句子暂时没有示例解释。AI 尚未接入，我们不会自动生成释义。</p><p>试着找出主语和谓语，再思考它与前一句有什么联系。</p></div>}
-                <button className="save-button" aria-pressed={isSaved} onClick={toggleSave}>{isSaved ? "✓ 已收藏到此浏览器" : "+ Save this discovery"}</button>
+                <p className="note-label">{sentenceNote ? t("HANDWRITTEN SAMPLE NOTE") : t("NO SAMPLE NOTE AVAILABLE")}</p>
+                {sentenceNote ? <><div className="note-block"><h3>{t("Meaning · 句意")}</h3><p>{sentenceNote.translation}</p></div><div className="note-block"><h3>{t("Structure · 结构")}</h3><p>{sentenceNote.structure}</p></div><div className="reflection"><h3>{t("Think about it")}</h3><p>{sentenceNote.question}</p></div></> : <div className="note-block"><h3>{t("Stay curious")}</h3><p>{t("这个句子暂时没有示例解释。AI 尚未接入，我们不会自动生成释义。")}</p><p>{t("试着找出主语和谓语，再思考它与前一句有什么联系。")}</p></div>}
+                <button className="save-button" aria-pressed={isSaved} onClick={toggleSave}>{isSaved ? t("✓ 已收藏到此浏览器") : t("+ Save this discovery")}</button>
               </>}
             </div>
-            <p className="companion-disclaimer">示例释义为预先编写的学习笔记，不是 AI 分析，也不保证适用于其他语境。</p>
+            <p className="ai-consent">{t("收藏时会向 AI 发送所选词句及所在句子，可能产生 API 费用。")}</p><p className="companion-disclaimer">{t("示例释义为预先编写的学习笔记，不是 AI 分析，也不保证适用于其他语境。")}</p>
           </section>
-          <section className="saved-panel" aria-labelledby="saved-title"><div className="saved-heading"><h2 id="saved-title">Little discoveries</h2><span>{saved.length}</span></div><p className="session-note">收藏与备注自动保存在此浏览器，刷新后仍在。</p>{saved.length === 0 ? <p className="saved-empty">Keep a word or a sentence worth coming back to.</p> : <ul>{saved.map(item => <li className="discovery-entry" key={item.id}><div className="discovery-row"><button className="saved-item" onClick={() => { setMode(item.kind); setSelected(item); }}><span>{item.kind === "word" ? "Aa" : "↳"}</span><span>{item.text}</span></button><button className="remove-saved" aria-label={`Remove saved discovery: ${item.text}`} onClick={() => changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, discoveries: a.discoveries.filter(i => i.id !== item.id) })))}>×</button></div><label className="discovery-label" htmlFor={`note-${item.id}`}>我的备注</label><textarea className="discovery-note" id={`note-${item.id}`} maxLength={2000} value={item.note} placeholder="记下你的理解、疑问或联想…" onChange={e => { const note = e.target.value; changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, discoveries: a.discoveries.map(d => d.id === item.id ? { ...d, note } : d) }))); }} /><span className="note-counter">{item.note.length}/2000</span></li>)}</ul>}</section>
+          <section className="saved-panel" aria-labelledby="saved-title"><div className="saved-heading"><h2 id="saved-title">{t("Little discoveries")}</h2><span>{saved.length}</span></div><p className="session-note">{t("收藏与备注自动保存在此浏览器，刷新后仍在。")}</p>{saved.length === 0 ? <p className="saved-empty">{t("Keep a word or a sentence worth coming back to.")}</p> : <ul>{saved.map(item => <li className="discovery-entry" key={item.id}><div className="discovery-row"><button className="saved-item" onClick={() => { setMode(item.kind); setSelected(item); }}><span>{item.kind === "word" ? "Aa" : "↳"}</span><span>{item.text}</span></button><button className="remove-saved" aria-label={`${t("移除收藏")}: ${item.text}`} onClick={() => changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, discoveries: a.discoveries.filter(i => i.id !== item.id) })))}>×</button></div><label className="discovery-label" htmlFor={`note-${item.id}`}>{t("我的备注")}</label><textarea className="discovery-note" id={`note-${item.id}`} maxLength={2000} value={item.note} placeholder={t("记下你的理解、疑问或联想…")} onChange={e => { const note = e.target.value; changeLibrary(l => updateRecord(l, record.id, a => ({ ...a, discoveries: a.discoveries.map(d => d.id === item.id ? { ...d, note } : d) }))); }} /><span className="note-counter">{item.note.length}/2000</span></li>)}</ul>}</section>
         </aside>
       </div>
-      {selected?.kind === "word" && <FloatingWordLookup selection={selected} saved={isSaved} onSave={toggleSave} onClose={closeWordLookup} />}
-      <p className="workspace-footer">文章、进度、收藏与备注仅存于此浏览器。清除网站数据会丢失记录，请在阅读书架定期导出。</p>
+      {selected?.kind === "word" && <FloatingWordLookup selection={selected} saved={isSaved} articleId={record.id} study={saved.find(d => d.id === selected.id)?.study} onSave={toggleSave} onClose={closeWordLookup} />}
+      <p className="workspace-footer">{t("文章、进度、收藏与备注仅存于此浏览器。清除网站数据会丢失记录，请在阅读书架定期导出。")}</p>
     </main>
   </div>;
 }

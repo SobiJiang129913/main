@@ -1,7 +1,9 @@
 "use client";
+import { useUI } from "@/hooks/use-preferences";
 
 import { useEffect, useRef, useState } from "react";
 export default function FullArticleButton({ url, onRead }: { url: string; onRead: (text: string) => void }) {
+  const t = useUI();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const active = useRef<AbortController | null>(null);
@@ -20,8 +22,8 @@ export default function FullArticleButton({ url, onRead }: { url: string; onRead
       onRead(body.readingText);
     } catch (cause) {
       if (controller.signal.aborted && controller.signal.reason !== "timeout") return;
-      setError(controller.signal.aborted ? "全文获取超时，请重试。" : cause instanceof Error && cause.name !== "TypeError" ? cause.message : "网络连接失败，请稍后重试。");
+      setError(controller.signal.aborted ? t("全文获取超时，请重试。") : cause instanceof Error && cause.name !== "TypeError" ? cause.message : t("网络连接失败，请稍后重试。"));
     } finally { clearTimeout(timer); active.current = null; if (!controller.signal.aborted || controller.signal.reason === "timeout") setLoading(false); }
   }
-  return <div className="full-article-control"><button className="summary-read-button full-read-button" disabled={loading} onClick={read}>{loading ? "正在获取官方全文…" : error ? "重试全文精读 →" : "全文精读 · ≤3,000 词 →"}</button>{error && <p className="full-article-error" role="alert">{error}</p>}</div>;
+  return <div className="full-article-control"><button className="summary-read-button full-read-button" disabled={loading} onClick={read}>{loading ? t("正在获取官方全文…") : error ? t("重试全文精读 →") : t("全文精读 · ≤3,000 词 →")}</button>{error && <p className="full-article-error" role="alert">{t(error)}</p>}</div>;
 }
