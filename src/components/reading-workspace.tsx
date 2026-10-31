@@ -2,7 +2,7 @@
 import { useUI } from "@/hooks/use-preferences";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { generateStudy } from "@/hooks/use-study";
+import { generateStudy, useStudy } from "@/hooks/use-study";
 import FloatingWordLookup from "@/components/floating-word-lookup";
 import { changeLibrary } from "@/hooks/use-library";
 import { updateRecord, toggleDiscovery, type ReadingRecord, type Selection } from "@/lib/library";
@@ -22,7 +22,11 @@ export default function ReadingWorkspace({ record, initialSelection, onBack }: {
   const heading = useRef<HTMLHeadingElement>(null);
   const paragraphs = useMemo(() => splitArticle(article), [article]);
   const count = useMemo(() => paragraphs.reduce((total, p) => total + p.sentences.reduce((n, s) => n + s.words.filter(w => w.isWord).length, 0), 0), [paragraphs]);
-  const sentenceNote = selected?.kind === "sentence" && Object.hasOwn(sentenceNotes, selected.text.trim()) ? sentenceNotes[selected.text.trim()] : undefined;
+  const selectedDiscovery = saved.find(d => d.id === selected?.id);
+  const selectedStudy = selectedDiscovery?.study;
+  const generation = useStudy(record.id, selected?.id || "");
+  const sampleSentenceNote = selected?.kind === "sentence" && Object.hasOwn(sentenceNotes, selected.text.trim()) ? sentenceNotes[selected.text.trim()] : undefined;
+  const sentenceNote = selected?.kind === "sentence" && selectedStudy ? { translation: selectedStudy.translation, structure: selectedStudy.analysis, question: "" } : sampleSentenceNote;
   const isSaved = saved.some(item => item.id === selected?.id);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -115,8 +119,11 @@ export default function ReadingWorkspace({ record, initialSelection, onBack }: {
                 <button className="return-to-selection" onClick={() => document.getElementById(selected.id)?.focus()}>{t("↑ Back to selected text")}</button>
                 <p className="selection-type">{t("SENTENCE EXPLORATION")}</p>
                 <h2 className="selected-text">{selected.text}</h2>
-                <p className="note-label">{sentenceNote ? t("HANDWRITTEN SAMPLE NOTE") : t("NO SAMPLE NOTE AVAILABLE")}</p>
-                {sentenceNote ? <><div className="note-block"><h3>{t("Meaning · 句意")}</h3><p>{sentenceNote.translation}</p></div><div className="note-block"><h3>{t("Structure · 结构")}</h3><p>{sentenceNote.structure}</p></div><div className="reflection"><h3>{t("Think about it")}</h3><p>{sentenceNote.question}</p></div></> : <div className="note-block"><h3>{t("Stay curious")}</h3><p>{t("这个句子暂时没有示例解释。AI 尚未接入，我们不会自动生成释义。")}</p><p>{t("试着找出主语和谓语，再思考它与前一句有什么联系。")}</p></div>}
+                <p className="note-label">{selectedStudy ? t(selectedStudy.source === "ai" ? "AI 学习笔记" : "你编辑的学习笔记") : sentenceNote ? t("HANDWRITTEN SAMPLE NOTE") : t("NO SAMPLE NOTE AVAILABLE")}</p>
+                {sentenceNote ? <><div className="note-block"><h3>{t("Meaning · 句意")}</h3><p>{sentenceNote.translation}</p></div><div className="note-block"><h3>{t("Structure · 结构")}</h3><p>{sentenceNote.structure}</p></div>{sentenceNote.question && <div className="reflection"><h3>{t("Think about it")}</h3><p>{sentenceNote.question}</p></div>}</> : <div className="note-block"><h3>{t("Stay curious")}</h3><p>{t("这个句子暂未生成学习笔记。收藏后会尝试请求 AI 翻译与解析。")}</p><p>{t("试着找出主语和谓语，再思考它与前一句有什么联系。")}</p></div>}
+                {generation.loading && <p className="ai-consent" role="status">{t("正在生成 AI 学习笔记…")}</p>}
+                {generation.error && <p className="ai-error" role="alert">{generation.error}</p>}
+                {selectedDiscovery && !selectedStudy && !generation.loading && <button className="nav-cta" onClick={() => void generateStudy(record.id, selectedDiscovery)}>{t("重试 AI 学习笔记")}</button>}
                 <button className="save-button" aria-pressed={isSaved} onClick={toggleSave}>{isSaved ? t("✓ 已收藏到此浏览器") : t("+ Save this discovery")}</button>
               </>}
             </div>
