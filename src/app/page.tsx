@@ -78,7 +78,7 @@ export default function Home() {
 
 
 
-        <DailyReading />
+        <DailyReading onRead={text => { changeLibrary(l => beginReading(l, text, crypto.randomUUID(), new Date().toISOString())); }} />
 
         <section id="why-lumi" className="features-section mx-auto max-w-6xl px-6 md:px-12" aria-labelledby="features-title">
           <div className="features-heading flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><p className="eyebrow">MORE THAN GETTING THE GIST</p><h2 id="features-title">A closer look changes everything.</h2></div><p>Small discoveries.<br />Lasting understanding.</p></div>

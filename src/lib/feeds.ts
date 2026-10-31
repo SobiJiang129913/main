@@ -1,11 +1,11 @@
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 
 export const feedSources = [
-  { id: "bbc", name: "BBC News", category: "World news", url: "https://feeds.bbci.co.uk/news/world/rss.xml", website: "https://www.bbc.com/news", hosts: ["bbc.com", "bbc.co.uk"] },
-  { id: "guardian", name: "The Guardian", category: "World news", url: "https://www.theguardian.com/world/rss", website: "https://www.theguardian.com/world", hosts: ["theguardian.com"] },
+  { id: "bbc", name: "BBC News", category: "World news", url: "https://feeds.bbci.co.uk/news/world/rss.xml", website: "https://www.bbc.com/news", hosts: ["bbc.com", "bbc.co.uk"], imageHosts: ["ichef.bbci.co.uk"] },
+  { id: "guardian", name: "The Guardian", category: "World news", url: "https://www.theguardian.com/world/rss", website: "https://www.theguardian.com/world", hosts: ["theguardian.com"], imageHosts: ["media.guim.co.uk", "i.guim.co.uk"] },
 ] as const;
 export type FeedSource = typeof feedSources[number];
-export type FeedItem = { id: string; sourceId: string; source: string; title: string; summary: string; url: string; publishedAt: string | null };
+export type FeedItem = { id: string; sourceId: string; source: string; title: string; summary: string; url: string; publishedAt: string | null; imageUrl: string | null; imageCredit: string | null };
 export type SourceStatus = { id: string; name: string; website: string; status: "ok" | "stale" | "unavailable"; fetchedAt: string | null };
 export type FeedResult = { items: FeedItem[]; sources: SourceStatus[]; checkedAt: string };
 const text = (value: unknown): string => typeof value === "string" || typeof value === "number" ? String(value) : "";
@@ -19,6 +19,25 @@ export function publisherURL(value: unknown, source: FeedSource) {
     url.hash = "";
     return url.href;
   } catch { return null; }
+}
+function mediaEntries(value: unknown): Record<string, unknown>[] {
+  return (Array.isArray(value) ? value : [value]).filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object");
+}
+export function feedImage(item: Record<string, unknown>, source: FeedSource) {
+  const group = mediaEntries(item["media:group"])[0] || {};
+  const candidates = [item["media:content"], group["media:content"], item["media:thumbnail"], group["media:thumbnail"], item.enclosure].flatMap(mediaEntries).filter(entry => {
+    const type = text(entry["@_type"]);
+    return !type || type.startsWith("image/");
+  }).sort((a,b) => (Number(b["@_width"]) || 0) - (Number(a["@_width"]) || 0));
+  for (const candidate of candidates) {
+    try {
+      const url = new URL(text(candidate["@_url"]));
+      if (url.protocol !== "https:" || url.username || url.password || url.port || !source.imageHosts.some(host => url.hostname === host)) continue;
+      const credit = candidate["media:credit"] || item["media:credit"];
+      return { imageUrl: url.href, imageCredit: plainText(typeof credit === "object" && credit ? (credit as Record<string, unknown>)["#text"] : credit).slice(0, 160) || null };
+    } catch { /* Missing or unsupported media URLs use the no-image fallback. */ }
+  }
+  return { imageUrl: null, imageCredit: null };
 }
 export function parseFeed(xml: string, source: FeedSource): FeedItem[] {
   if (/<!DOCTYPE|<!ENTITY/i.test(xml) || XMLValidator.validate(xml) !== true) throw new Error("Unsupported XML");
@@ -36,7 +55,7 @@ export function parseFeed(xml: string, source: FeedSource): FeedItem[] {
     if (!url || !title || seen.has(url)) continue;
     seen.add(url);
     const date = Date.parse(text(item.pubDate) || text(item["dc:date"]));
-    items.push({ id: url, url, title, summary: plainText(item.description).slice(0, 350), sourceId: source.id, source: source.name, publishedAt: Number.isFinite(date) ? new Date(date).toISOString() : null });
+    items.push({ ...feedImage(item, source), id: url, url, title, summary: plainText(item.description).slice(0, 350), sourceId: source.id, source: source.name, publishedAt: Number.isFinite(date) ? new Date(date).toISOString() : null });
     if (items.length === 12) break;
   }
   return items;

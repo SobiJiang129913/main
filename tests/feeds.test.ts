@@ -29,3 +29,16 @@ test("reports partial failures and stale data without pretending it is fresh",as
 test("returns unavailable for all failed or oversized feeds",async()=>{
   const service=createFeedService(async()=>new Response('x'.repeat(1000001)));const result=await service();assert.equal(result.items.length,0);assert.ok(result.sources.every(s=>s.status==='unavailable'));
 });
+
+test("extracts BBC thumbnails and Guardian media images with credit",()=>{
+  const bbc='<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><item><title>Photo story</title><link>https://www.bbc.com/news/a</link><media:thumbnail url="https://ichef.bbci.co.uk/news/240/a.jpg" width="240"/><media:thumbnail url="https://ichef.bbci.co.uk/news/640/a.jpg" width="640"/></item></channel></rss>';
+  assert.equal(parseFeed(bbc,feedSources[0])[0].imageUrl,'https://ichef.bbci.co.uk/news/640/a.jpg');
+  const guardian='<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><item><title>Photo story</title><link>https://www.theguardian.com/world/a</link><media:content url="https://media.guim.co.uk/a.jpg" type="image/jpeg"><media:credit>Photographer / Agency</media:credit></media:content></item></channel></rss>';
+  const item=parseFeed(guardian,feedSources[1])[0];assert.equal(item.imageUrl,'https://media.guim.co.uk/a.jpg');assert.equal(item.imageCredit,'Photographer / Agency');
+});
+test("does not accept arbitrary, insecure or non-image media",()=>{
+  for(const [url,type] of [['https://evil.test/a.jpg','image/jpeg'],['http://ichef.bbci.co.uk/a.jpg','image/jpeg'],['https://user:pass@ichef.bbci.co.uk/a.jpg','image/jpeg'],['https://ichef.bbci.co.uk/video.mp4','video/mp4']]) {
+    const xml=`<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><item><title>News</title><link>https://www.bbc.com/news/a</link><media:content url="${url}" type="${type}"/></item></channel></rss>`;
+    assert.equal(parseFeed(xml,feedSources[0])[0].imageUrl,null);
+  }
+});
