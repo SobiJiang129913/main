@@ -21,6 +21,7 @@ const pairs: [string, string][] = [
 ["官方接口未提供这篇报道的全文，或该内容不是普通文章。不会将摘要当作全文。", "The official API has no full body for this item, or it is not an ordinary article. A summary will not be substituted."],
 ["AI 学习笔记", "AI study note"],["你编辑的学习笔记", "Your edited study note"],["正在生成 AI 学习笔记…", "Generating an AI study note…"],["重试 AI 学习笔记", "Retry AI study note"],
 ["请粘贴 30,000 字符以内的文章。", "Paste an article within 30,000 characters."],["历史记录已达 40 篇，请先导出备份并删除不需要的文章。", "The library has reached 40 articles. Export a backup and remove articles you no longer need."],["每篇最多收藏 200 项，请先整理收藏。", "Each article can have up to 200 favorites. Remove unused items first."],
+["AI 服务商配置无效，请设置为 openai 或 gemini。", "Invalid AI provider. Set it to openai or gemini."],["请配置 LUMI_GEMINI_MODEL，使用 AI Studio 中有可用额度的模型 ID。", "Set LUMI_GEMINI_MODEL to a model ID with available quota in AI Studio."],["Gemini 模型 ID 格式无效，请从 AI Studio 复制模型 ID，不是网页地址。", "Invalid Gemini model ID. Copy a model ID from AI Studio, not a website URL."],["Gemini 免费额度或请求频率已达上限，请查看 AI Studio 用量后稍后重试。", "Gemini quota or rate limit reached. Check AI Studio usage and try later."],["Gemini Key、项目权限或服务地区有问题，请检查 AI Studio 配置。", "Check your Gemini key, project permissions and supported service regions."],["Gemini 模型不存在、未开放，或不支持所需的结构化输出。请检查模型 ID 和访问权限。", "The Gemini model is unavailable or does not support structured output. Check the model ID and access."],
 ];
 const lookup = new Map<string,[string,string]>();
 pairs.forEach(pair => { lookup.set(pair[0], pair); lookup.set(pair[1], pair); });

@@ -6,15 +6,16 @@ import { isExplanationRequest, isExplanation, explanationKey } from "../src/lib/
 const input = { kind: "word", text: "attention", context: "To read deeply is to pay attention." };
 const note = { meaning: "注意力", explanation: "pay attention 表示专注。", example: "Pay attention to the rhythm.", question: "注意力如何影响阅读？" };
 const realFetch = globalThis.fetch;
-const original = { enabled: process.env.LUMI_AI_ENABLED, key: process.env.LUMI_OPENAI_API_KEY, openai: process.env.OPENAI_API_KEY };
+const original = { enabled: process.env.LUMI_AI_ENABLED, key: process.env.LUMI_OPENAI_API_KEY, openai: process.env.OPENAI_API_KEY, provider: process.env.LUMI_AI_PROVIDER };
 afterEach(() => {
   globalThis.fetch = realFetch;
-  for (const [name, value] of [["LUMI_AI_ENABLED", original.enabled], ["LUMI_OPENAI_API_KEY", original.key], ["OPENAI_API_KEY", original.openai]]) {
+  for (const [name, value] of [["LUMI_AI_ENABLED", original.enabled], ["LUMI_OPENAI_API_KEY", original.key], ["OPENAI_API_KEY", original.openai], ["LUMI_AI_PROVIDER", original.provider]]) {
     if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
   }
 });
 function setup() {
   process.env.LUMI_AI_ENABLED = "true";
+  process.env.LUMI_AI_PROVIDER = "openai";
   process.env.LUMI_OPENAI_API_KEY = "unit-test-only-not-a-real-key";
   globalThis.fetch = async () => { throw new Error("Unexpected upstream call"); };
 }

@@ -158,3 +158,26 @@ Key 必须有可用 API 额度。ChatGPT 订阅不包含 API 额度，Guardian K
 新增主要文件：`appearance-controls.tsx`、`use-preferences.ts`、`preferences.ts`、`ui-text.ts` 提供界面偏好；`favorites.tsx`、`use-study.ts` 提供分组收藏与笔记；`api/explain/route.ts`、`explanation.ts` 为服务端 AI 接口与数据契约。
 
 `npm test` 的 OpenAI 成功/失败场景使用模拟响应，不会产生 API 费用；真实 OpenAI 权限、额度和效果需要在配置后单独验证。本版本仍只有 JSON 导出，没有导入恢复界面。“导出”是下载备份，“导入”才是从文件恢复，二者不同。
+
+## Gemini 免费层接入（可替代 OpenAI）
+
+AI Studio 中的“免费层级”只说明结算层级，不保证所有模型、地区和项目都有可用免费额度。先在 AI Studio 的“速率限制 / 用量”中确认一个当前可用、支持文本与结构化输出的模型 ID。本项目不硬编码 Gemini 模型默认值，避免选择已下线或没有免费配额的模型。
+
+Vercel → Environment Variables 中设置：
+
+| 名称 | 类型 | 值 |
+| --- | --- | --- |
+| `LUMI_AI_PROVIDER` | Config | `gemini` |
+| `LUMI_GEMINI_API_KEY` | Secret | AI Studio 创建的完整 Key |
+| `LUMI_GEMINI_MODEL` | Config | 控制台显示的实际模型 ID，可带 `models/` 前缀，不要填网页地址 |
+| `LUMI_AI_ENABLED` | Config | `true` |
+
+先选 Preview 环境，保存并重新部署最新代码。收藏一个词或句子验证 AI 笔记，再决定是否为 Production 启用。不要把 Gemini Key 填进 OpenAI Key 变量，也不要发到聊天或提交到 GitHub。Guardian Key 与这两家模型服务都无关。
+
+服务端通过固定的 `generativelanguage.googleapis.com` 调用 Gemini `generateContent`，Key 放在 `x-goog-api-key` 请求头中，不放在网页或 URL。使用结构化 JSON 响应、输出字段验证、30 秒超时、最多 4,096 输出 tokens 和响应体大小限制。未提供模型、无权限、地区限制、额度不足或回复不完整时明确报错，不会伪造释义，也不会自动切换到 OpenAI 消耗另一家的额度。OpenAI 的默认行为保留，未设置 provider 时仍为 `openai`。
+
+Gemini 免费层限额与输入数据政策以 Google 当前说明为准；本服务不能保证请求免费或可用。不要提交敏感文章。OpenAI 的 `store: false` 设置不适用于 Gemini；Gemini 的数据使用以其对应计划政策为准。
+
+Codex 当前没有 Gemini Key，因此成功回复的自动测试使用模拟 Google 响应。真实模型权限、免费配额、地区与结构化输出支持需配置后验证。云环境的 Gemini 凭据/目标域名要求及 provider/model 变量已另存草稿，不会自动应用或同步到 Vercel。
+
+本轮选择的模型为 **Gemini 2.5 Flash-Lite**，对应 `LUMI_GEMINI_MODEL=gemini-2.5-flash-lite`。请仍以你的 AI Studio 当前项目的可用模型与配额为准；服务端没有在该模型失效时自动换用其他模型。
